@@ -53,7 +53,9 @@ Our proposed model G-NIA outperforms all the baselines (or performs the same as 
 
 Download Citeseer, Reddit (the subgraph in our paper), ogbproducts (the subgraph in our paper) from [Here](https://drive.google.com/file/d/1P9Oo7ix3kfjoI9hhPs2fpf0Reyog7UeJ/view?usp=sharing ).
 
-The train/val/test split mentioned in the paper is also included  in the above link.
+Put **datasets.zip** in this directory and unzip it.
+
+The train/val/test split mentioned in the paper is also included  in the above datasets.zip.
 
 
 

@@ -8,6 +8,7 @@ import random
 np_load_old = np.load
 np.aload = lambda *a,**k: np_load_old(*a, allow_pickle=True, **k)
 
+
 class EarlyStop_loss:
     def __init__(self, patience=3):
         self.patience = patience
@@ -37,7 +38,7 @@ class EarlyStop_loss:
     def save_checkpoint(self, model, file):
         '''Saves model when validation loss decrease.'''
         torch.save(model.state_dict(), file+'_checkpoint.pt',_use_new_zipfile_serialization=False)  
-        
+
  
 def setup_seed(seed):
     torch.manual_seed(seed)

@@ -1,5 +1,5 @@
 datasets/
-.DS*/
+.DS_Store/
 __pycache__/
 log/
 output/

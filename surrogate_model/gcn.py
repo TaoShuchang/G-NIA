@@ -1,3 +1,4 @@
+# More details can be found in https://github.com/tkipf/pygcn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

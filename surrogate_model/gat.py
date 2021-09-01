@@ -1,3 +1,4 @@
+# More details can be found in https://github.com/gordicaleksa/pytorch-GAT
 import time
 import numpy as np
 import torch

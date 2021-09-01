@@ -1,3 +1,4 @@
+# More details can be found in https://github.com/klicperajo/ppnp
 from typing import List
 import torch
 import torch.nn as nn

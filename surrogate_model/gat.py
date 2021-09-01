@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import enum
-# # Support for 3 different GAT implementations - we'll profile each one of these in playground.py
+
 class LayerType(enum.Enum):
     IMP1 = 0,
     IMP2 = 1,

@@ -3,4 +3,4 @@ datasets/
 __pycache__/
 log/
 output/
-.DS*/
+.DS_Store/

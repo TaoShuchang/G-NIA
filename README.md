@@ -63,7 +63,7 @@ The train/val/test split mentioned in the paper is also included  in the above d
 
 ***Example Usage***
 
-`python -u run_gnia.py --suffix single_gcn --nepochs 10000 --lr 1e-5 --connect True --epsst 50 --epsdec 1 --patience 500 --dataset 12k_reddit --edgetau 0.01 --surro_type gcn --eval_type gcn --batchsize 32  `
+`python -u run_gnia.py --suffix single_gcn --nepochs 10000 --lr 1e-5 --connect True --epsst 50 --epsdec 1 --patience 500 --dataset 12k_reddit --edgetau 0.01 --surro_type gcn --victim_type gcn --batchsize 32  `
 
 For detailed description of all parameters, you can run
 

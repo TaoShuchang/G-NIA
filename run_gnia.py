@@ -388,33 +388,31 @@ if __name__ == '__main__':
 
     # dataset
     parser.add_argument('--dataset', default='citeseer',help='dataset to use')
-    
     parser.add_argument('--surro_type', default='gcn',help='surrogate gnn model')
-    parser.add_argument('--victim_type', default='gcn',help='evaluation gnn model')
+    parser.add_argument('--victim_type', default='gcn',help='victim gnn model')
+    parser.add_argument('--connect', default=False, type=bool, help='largest connected component')
+    parser.add_argument('--multiedge', default=False, type=bool, help='budget of malicious edges connected to injected node')
 
     # optimization
-    parser.add_argument('--optimizer', choices=['Adam','SGD', 'RMSprop'], default='RMSprop',
-                        help='optimizer')
+    parser.add_argument('--optimizer', choices=['Adam','RMSprop'], default='RMSprop', help='optimizer')
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
     parser.add_argument('--wd', default=0., type=float , help='weight decay')
+    parser.add_argument('--nepochs', type=int, default=10000, help='number of epochs')
+    parser.add_argument('--patience', default=100, type=int, help='patience of early stopping')
+    parser.add_argument('--batchsize', type=int, default=8, help='batchsize')
     
-    parser.add_argument('--attrtau', default=None, help='tau of gumbel softmax on attr')
+    # Hyperparameters
+    parser.add_argument('--attrtau', default=None, help='tau of gumbel softmax on attribute on discrete attributed graph')
     parser.add_argument('--edgetau', default=None, help='tau of gumbel softmax on edge')
     parser.add_argument('--epsdec', default=50, type=float, help='epsilon decay: coefficient of the gumbel sampling')
     parser.add_argument('--epsst', default=50, type=int, help='epsilon start: coefficient of the gumbel sampling')
-    # parser.add_argument('--alpha', default=0.1, type=float, help='coeffiencient of sparsity constraint')
-    parser.add_argument('--patience', default=100, type=int, help='patience of early stopping')
-    parser.add_argument('--connect', default=False, type=bool, help='lcc')
-    parser.add_argument('--multiedge', default=False, type=bool, help='budget of edges connected to injected node')
-    
-    parser.add_argument('--counter', type=int, default=0, help='counter')
-    parser.add_argument('--best_score', type=float, default=0., help='best score')
-    parser.add_argument('--st_epoch', type=int, default=0, help='start epoch')
-    parser.add_argument('--nepochs', type=int, default=10000, help='number of epochs')
-    parser.add_argument('--batchsize', type=int, default=8, help='batchsize')
-    parser.add_argument('--k', type=int, default=10, help='the target node to attack')
-    parser.add_argument('--local_rank', type=int, default=2, help='DDP local rank')
-    
+        
+    # Ignorable
+    parser.add_argument('--counter', type=int, default=0, help='counter for recover training (Ignorable)')
+    parser.add_argument('--best_score', type=float, default=0., help='best score for recover training (Ignorable)')
+    parser.add_argument('--st_epoch', type=int, default=0, help='start epoch for recover training (Ignorable)')
+    parser.add_argument('--local_rank', type=int, default=2, help='DDP local rank for parallel (Ignorable)')
+
     args = parser.parse_args()
     opts = args.__dict__.copy()
     GAT_para = {'12k_reddit':(4,4), '10k_ogbproducts':(6,6), 'citeseer':(8,8)}
@@ -422,6 +420,7 @@ if __name__ == '__main__':
     opts['discrete'] = False if 'k_' in opts['dataset'] else True
     print(opts)
     att_sucess = main(opts) 
+
 
 '''
 nohup python -u run_gnia.py --suffix multi_gcn --multiedge True --nepochs 10000 --lr 1e-5 --connect True --epsst 50 --epsdec 1 --patience 500 --dataset citeseer --attrtau 1 --edgetau 0.01 --surro_type gcn --victim_type gcn --batchsize 32 > log/white_gcn_gnia/citeseer_multi.log 2>&1 &

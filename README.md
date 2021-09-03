@@ -40,6 +40,7 @@ Our proposed model G-NIA outperforms all the baselines (or performs the same as 
 
 
 ## Requirements
+- python>=3.6
 
 - pytorch>=1.5.0
 
@@ -55,7 +56,7 @@ Download Citeseer, Reddit (the subgraph in our paper), ogbproducts (the subgraph
 
 Put **datasets.zip** in this directory and unzip it.
 
-The train/val/test split mentioned in the paper is also included  in the above datasets.zip.
+The train/val/test split mentioned in our paper is also included in the above datasets.zip.
 
 
 

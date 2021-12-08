@@ -290,3 +290,34 @@ def train_val_test_split_tabular(arrays, train_size=0.1, val_size=0.1, test_size
                                           stratify=stratify)
 
     return idx_train, idx_val, idx_test
+
+
+# ------------------------------ Multi-targets ------------------------
+
+def obtain_multi_targets(dataset, tar_num, adj, seed=123):
+    deg = np.array(adj.sum(1)).squeeze()
+    deg_sort = deg.argsort()
+    tmp_idx = np.where(deg[deg_sort]>=tar_num)
+    idx = deg_sort[tmp_idx]         # idx contains nodes whose degree are larger than tar_num
+    
+    candidate = np.arange(adj.shape[0])
+    real_targets_all = []
+    for i in idx:
+        one_order_nei = adj[i].nonzero()[1]
+        cand_one_order_nei = np.intersect1d(candidate,one_order_nei)
+        if len(cand_one_order_nei) >= tar_num:
+            real_targets = np.random.choice(cand_one_order_nei, tar_num, replace=False)
+            real_targets_all.append(real_targets)
+            candidate = np.setdiff1d(candidate, real_targets)
+    real_targets_arr = np.array(real_targets_all)
+    
+    mask = np.arange(len(real_targets_arr))
+    train_mask, val_mask, test_mask = train_val_test_split_tabular(mask, train_size=0.64, val_size=0.16, test_size=0.2, random_state=seed)
+    split={}
+    split['train'] = train_mask
+    split['val'] = val_mask
+    split['test'] = test_mask
+    np.save('../datasets/multargets_'+dataset + '_tarnum' + str(tar_num) + '.npy', real_targets_arr)
+    np.save('../datasets/multargets_'+dataset+ '_tarnum' + str(tar_num) + '_split.npy',split)
+    return 
+    

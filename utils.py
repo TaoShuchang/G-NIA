@@ -317,7 +317,7 @@ def obtain_multi_targets(dataset, tar_num, adj, seed=123):
     split['train'] = train_mask
     split['val'] = val_mask
     split['test'] = test_mask
-    np.save('../datasets/multargets_'+dataset + '_tarnum' + str(tar_num) + '.npy', real_targets_arr)
-    np.save('../datasets/multargets_'+dataset+ '_tarnum' + str(tar_num) + '_split.npy',split)
+    np.save('datasets/multargets_'+dataset + '_tarnum' + str(tar_num) + '.npy', real_targets_arr)
+    np.save('datasets/multargets_'+dataset+ '_tarnum' + str(tar_num) + '_split.npy',split)
     return 
     

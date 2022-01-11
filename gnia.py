@@ -64,7 +64,7 @@ class MLP(nn.Module):
 # ------------------------- Generalizable Node Injection Attack (G-NIA) model ----------------------------
 # Attribute generation
 class AttrGeneration(nn.Module):
-    def __init__(self, labels, tau, feat_dim, weight1, weight2, discrete, device,feat_max, feat_min):
+    def __init__(self, labels, tau, feat_dim, weight1, weight2, discrete, device, tar_num, feat_max, feat_min):
         super(AttrGeneration, self).__init__()
         self.labels = labels
         self.label_dim = labels.max().item() + 1
@@ -74,6 +74,7 @@ class AttrGeneration(nn.Module):
         self.discrete = discrete
         self.tau = tau
         self.device = device
+        self.tar_num = tar_num
         self.feat_max = feat_max
         self.feat_min = feat_min
         # direct 方式
@@ -82,9 +83,14 @@ class AttrGeneration(nn.Module):
     def pool_func(self, wlabel, wsec):
         sub_graph_emb = self.node_emb[self.sub_graph_nodes].mean(0)
         tmp_emb = F.relu(torch.mm(self.feat[self.target], self.weight1))
-        tarfeat_emb = torch.mm(tmp_emb, self.weight2)
 
-        graph_emb = torch.cat((sub_graph_emb.unsqueeze(0), self.node_emb[self.target], tarfeat_emb, wlabel, wsec), 1)
+        tarfeat_emb = torch.mm(tmp_emb, self.weight2)
+        if self.tar_num == 1:
+            graph_emb = torch.cat((sub_graph_emb.unsqueeze(0), self.node_emb[self.target], tarfeat_emb, wlabel, wsec), 1)
+        else:
+            tar_emb = self.node_emb[self.target].mean(0).unsqueeze(0)
+            tarfeat_emb = tarfeat_emb.mean(0).unsqueeze(0)
+            graph_emb = torch.cat((sub_graph_emb.unsqueeze(0), tar_emb, tarfeat_emb, wlabel.mean(0).unsqueeze(0), wsec.mean(0).unsqueeze(0)), 1)
         return graph_emb
 
     def forward(self, target, feat, sub_graph_nodes, node_emb, wlabel, wsec, feat_num=None,  eps=1, train_flag=False):
@@ -104,7 +110,7 @@ class AttrGeneration(nn.Module):
 
 # Edge generation
 class EdgeGeneration(nn.Module):
-    def __init__(self, labels,feat_dim, weight1, weight2, device, tau=None):
+    def __init__(self, labels,feat_dim, weight1, weight2, device, tar_num=1, tau=None):
         super(EdgeGeneration, self).__init__()
         self.labels = labels
         self.label_dim = self.labels.max() + 1
@@ -112,8 +118,9 @@ class EdgeGeneration(nn.Module):
         # TODO 用net.weight
         self.weight1 = weight1
         self.weight2 = weight2
+        self.tar_num = tar_num
         # self.obtain_score = MLP(5*self.feat_dim+1, 1)
-        self.obtain_score = MLP(3*self.label_dim + 2*self.feat_dim+1, 512, 32, 1)
+        self.obtain_score = MLP(3*self.label_dim + 2*self.feat_dim+tar_num, 512, 32, 1)
         self.tau = tau
         self.device = device
         
@@ -123,20 +130,29 @@ class EdgeGeneration(nn.Module):
         add_xw = torch.mm(torch.mm(new_feat[-1].unsqueeze(0),  self.weight1), self.weight2)
 
         # tar_xw = new_feat[self.target]
-        tar_xw_rep = tar_xw.repeat(len(self.sub_graph_nodes),1)
-
         # add_xw = new_feat[-1].unsqueeze(0)
         add_xw_rep = add_xw.repeat(len(self.sub_graph_nodes),1)
-        if self.adj_tensor.is_sparse:
-            tar_norm_adj = self.adj_tensor[self.target.item()].to_dense()
-            norm_a_target = tar_norm_adj[self.sub_graph_nodes].unsqueeze(1)
-        elif self.adj_tensor.shape[1] == 1:
-            norm_a_target = self.adj_tensor
+        if self.tar_num == 1:
+            if self.adj_tensor.is_sparse:
+                tar_norm_adj = self.adj_tensor[self.target.item()].to_dense()
+                norm_a_target = tar_norm_adj[self.sub_graph_nodes].unsqueeze(1)
+            elif self.adj_tensor.shape[1] == 1:
+                norm_a_target = self.adj_tensor
+            else:
+                norm_a_target = self.adj_tensor[self.sub_graph_nodes, self.target].unsqueeze(0).t()
         else:
-            norm_a_target = self.adj_tensor[self.sub_graph_nodes, self.target].unsqueeze(0).t()
-        w_rep = wlabel.repeat(len(self.sub_graph_nodes),1)
-        w_sec_rep = wsec.repeat(len(self.sub_graph_nodes),1)
-
+            if self.adj_tensor.is_sparse:
+                self.adj_tensor = self.adj_tensor.to_dense()
+            norm_a_targets_list = [self.adj_tensor[self.sub_graph_nodes, target].unsqueeze(0).t() for target in self.target]
+            norm_a_target = torch.cat(norm_a_targets_list,1)
+        if self.tar_num == 1:
+            tar_xw_rep = tar_xw.repeat(len(self.sub_graph_nodes),1)
+            w_rep = wlabel.repeat(len(self.sub_graph_nodes),1)
+            w_sec_rep = wsec.repeat(len(self.sub_graph_nodes),1)
+        else:
+            tar_xw_rep = tar_xw.mean(0).repeat(len(self.sub_graph_nodes),1)
+            w_rep = wlabel.mean(0).repeat(len(self.sub_graph_nodes),1)
+            w_sec_rep = wsec.mean(0).repeat(len(self.sub_graph_nodes),1)
         concat_output = torch.cat((tar_xw_rep, sub_xw, add_xw_rep, norm_a_target, w_rep, w_sec_rep), 1)
         # concat_output = torch.cat((tar_emb_rep, sub_node_emb, add_emb_rep,tar_add_emb_sub), 1)
         return concat_output
@@ -159,15 +175,16 @@ class EdgeGeneration(nn.Module):
 
 
 class GNIA(nn.Module):
-    def __init__(self, labels, feat_dim, weight1, weight2, discrete, device, feat_max=None, feat_min=None, feat_num=None, attr_tau=None, edge_tau=None):
+    def __init__(self, labels, feat_dim, weight1, weight2, discrete, device, tar_num=1, feat_max=None, feat_min=None, feat_num=None, attr_tau=None, edge_tau=None):
         super(GNIA,self).__init__()
         self.labels = labels
 #         self.budget = budget
         self.feat_dim = feat_dim
         self.feat_num = feat_num
-        self.add_node_agent = AttrGeneration(self.labels, attr_tau, self.feat_dim, weight1, weight2, discrete, device, feat_max, feat_min).to(device)
+        self.add_node_agent = AttrGeneration(self.labels, attr_tau, self.feat_dim, weight1, weight2, discrete, device, tar_num, feat_max, feat_min).to(device)
 #         self.add_edge_agent = EdgeGeneration(self.labels, self.budget, tau)
-        self.add_edge_agent = EdgeGeneration(self.labels, feat_dim, weight1, weight2, device, edge_tau)
+        self.add_edge_agent = EdgeGeneration(self.labels, feat_dim, weight1, weight2, device, tar_num, edge_tau)
+        self.tar_num = tar_num
         self.discrete = discrete
         self.device = device
     
@@ -188,9 +205,10 @@ class GNIA(nn.Module):
         
         self.n = self.feat.shape[0]
         self.node_emb = node_emb
+        if self.tar_num == 1:
+            wlabel = wlabel.unsqueeze(0)
+            wsec = wsec.unsqueeze(0)
 
-        wlabel = wlabel.unsqueeze(0)
-        wsec = wsec.unsqueeze(0)
         self.new_feat, self.add_feat = self.add_node_and_update(self.feat_num, wlabel, wsec, eps, train_flag=train_flag)
 
         self.score, self.masked_score_idx = self.add_edge_and_update(self.new_feat, wlabel, wsec, eps=eps, train_flag=train_flag)
